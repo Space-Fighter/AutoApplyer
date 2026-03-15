@@ -46,7 +46,7 @@ A relational database is perfect.
 
 ---
 
-# Phase 1 — Project Skeleton (Day 1)
+# Phase 1 — Project Skeleton (Day 1) ✅
 
 Folder structure:
 

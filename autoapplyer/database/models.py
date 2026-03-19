@@ -27,7 +27,6 @@ class Job(SQLModel, table=True):
     city: Optional[str] = None
     region: Optional[str] = None
     country: Optional[str] = None
-
     # onsite/ remote / hybrid
     workplace: Optional[str] = None
     # main job url link(highest priority)
@@ -35,3 +34,4 @@ class Job(SQLModel, table=True):
     skill_tags: Optional[str] = None
     description: Optional[str] = None
     summary: Optional[str] = None
+    date_scraped: Optional[datetime] = Field(default_factory=datetime.utcnow)

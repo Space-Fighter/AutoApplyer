@@ -1,24 +1,19 @@
 import asyncio
 import os
 from pathlib import Path
-
-
 from dotenv import load_dotenv
-from playwright.async_api import async_playwright, Page
-
+from playwright.async_api import async_playwright, Page, Error as PlaywrightError
 
 
 JOBS_URL = "https://www.workatastartup.com/jobs"
 STATE_FILE = Path(__file__).with_name("yc_state.json")
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
-
-
 load_dotenv(dotenv_path=ENV_FILE)
-
 
 BOT_EMAIL = os.getenv("YC_BOT_EMAIL")
 BOT_PASSWORD = os.getenv("YC_BOT_PASSWORD")
+
 
 async def is_logged_in(page: Page) -> bool:
     current_url = page.url.lower()
@@ -32,42 +27,47 @@ async def login_and_save_state(page: Page) -> None:
     await page.locator('input[name="username"]').fill(BOT_EMAIL)
     await page.locator('input[name="password"]').fill(BOT_PASSWORD)
     await page.locator('input[name="password"]').press("Enter")
+    await page.wait_for_url("**/jobs**", timeout=15000)
+    await page.wait_for_load_state("networkidle")
     await page.context.storage_state(path=str(STATE_FILE))
+
     
 async def open_yc() -> None:
     if not STATE_FILE.exists():
         raise FileNotFoundError(f"No saved session found at {STATE_FILE}. Run the login flow first.")
-    
-    logged_in = True
-    
+
     async with async_playwright() as p:
         browser = await p.firefox.launch(headless=False)
+        context = None
         try:
-            context = await browser.new_context(storage_state=str(STATE_FILE))
+            try:
+                context = await browser.new_context(storage_state=str(STATE_FILE))
+            except Exception:
+                context = await browser.new_context()
+
             page = await context.new_page()
             print("Opening YC jobs page with saved session...")
             await page.goto(JOBS_URL)
             await page.wait_for_timeout(3000)
             logged_in = await is_logged_in(page)
-        except:
-            print("Failed to load saved state.")
-            context = await browser.new_context()
-            page = await context.new_page()
-            print("Opening YC jobs page without saved session...")
-            await page.goto(JOBS_URL)
-            await page.wait_for_timeout(3000)
-            logged_in = False
 
-        if not logged_in:
-            print("NOT LOGGED IN -  Logging in and updating state file...")
-            await login_and_save_state(page)
+            if not logged_in:
+                print("NOT LOGGED IN - Logging in and updating state file...")
+                await login_and_save_state(page)
+                print("Login successful.")
 
-        try:
+            print("SLEEPING INDEFINITELY - Press Ctrl+C to exit.")
             await asyncio.sleep(float("inf"))
-        except (KeyboardInterrupt, Exception):
+
+        except (KeyboardInterrupt, asyncio.CancelledError, PlaywrightError):
             print("Closing browser...")
-            await context.close()
-            await browser.close()
+        finally:
+            try:
+                if context:
+                    await context.close()
+                await browser.close()
+            except Exception:
+                pass
 
 async def main() -> None:
     opened = await open_yc()

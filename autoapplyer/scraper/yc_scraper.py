@@ -20,84 +20,57 @@ load_dotenv(dotenv_path=ENV_FILE)
 BOT_EMAIL = os.getenv("YC_BOT_EMAIL")
 BOT_PASSWORD = os.getenv("YC_BOT_PASSWORD")
 
-async def _session_is_valid(page: Page) -> bool:
+async def is_logged_in(page: Page) -> bool:
     current_url = page.url.lower()
     login_button = page.locator("a.inline-flex:text('Log In')")
-
     if ("account.ycombinator.com" in current_url or "login" in current_url or await login_button.is_visible()):
         return False
     return True
 
-async def login_and_save_state() -> None:
-    async with async_playwright() as p:
-        browser = await p.firefox.launch(headless=False)
-        context = await browser.new_context()
-        page = await context.new_page()
-
-
-        print("Opening YC jobs page for manual login...")
-        if BOT_EMAIL:
-            print(f"Bot email found in environment: {BOT_EMAIL}")
-        else:
-            print("No YC_BOT_EMAIL found in environment yet.")
-        if not BOT_PASSWORD:
-            print("No YC_BOT_PASSWORD found in environment yet.")
-        await page.goto(JOBS_URL)
-        print("Log in in the browser window, then come back here.")
-        input("Press Enter after the YC jobs page shows you as signed in: ")
-
-
-        await context.storage_state(path=str(STATE_FILE))
-        print(f"Saved login state to {STATE_FILE}")
-
-
-        await context.close()
-        await browser.close()
-
-
-
-async def open_with_saved_session() -> None:
+async def login_and_save_state(page: Page) -> None:
+    await page.get_by_text("Log In", exact=True).click()
+    await page.locator('input[name="username"]').fill(BOT_EMAIL)
+    await page.locator('input[name="password"]').fill(BOT_PASSWORD)
+    await page.locator('input[name="password"]').press("Enter")
+    await page.context.storage_state(path=str(STATE_FILE))
+    
+async def open_yc() -> None:
     if not STATE_FILE.exists():
-        raise FileNotFoundError(
-            f"No saved session found at {STATE_FILE}. Run the login flow first."
-        )
+        raise FileNotFoundError(f"No saved session found at {STATE_FILE}. Run the login flow first.")
+    
+    logged_in = True
     
     async with async_playwright() as p:
         browser = await p.firefox.launch(headless=False)
         try:
             context = await browser.new_context(storage_state=str(STATE_FILE))
+            page = await context.new_page()
+            print("Opening YC jobs page with saved session...")
+            await page.goto(JOBS_URL)
+            await page.wait_for_timeout(3000)
+            logged_in = await is_logged_in(page)
         except:
-            print("Failed to load saved state. Make sure the file exists and is valid.")
-            await browser.close()
-            return
-        page = await context.new_page()
+            print("Failed to load saved state.")
+            context = await browser.new_context()
+            page = await context.new_page()
+            print("Opening YC jobs page without saved session...")
+            await page.goto(JOBS_URL)
+            await page.wait_for_timeout(3000)
+            logged_in = False
 
-        print("Opening YC jobs page with saved session...")
-        await page.goto(JOBS_URL)
-        await page.wait_for_timeout(3000)
-        session_ok = await _session_is_valid(page)
-        print(f"Session valid: {session_ok}")
-        print(f"Page title: {await page.title()}")
-        print("Browser is open. Use this to confirm the saved session still works.")
+        if not logged_in:
+            print("NOT LOGGED IN -  Logging in and updating state file...")
+            await login_and_save_state(page)
 
         try:
             await asyncio.sleep(float("inf"))
         except (KeyboardInterrupt, Exception):
             print("Closing browser...")
-        finally:
             await context.close()
             await browser.close()
 
-
-
 async def main() -> None:
-    action = input("Type 'login' to save YC session, or press Enter to reuse it: ")
-    if action.strip().lower() == "login":
-        await login_and_save_state()
-    else:
-        await open_with_saved_session()
-
-
+    opened = await open_yc()
 
 if __name__ == "__main__":
     asyncio.run(main())

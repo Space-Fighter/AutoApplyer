@@ -1,0 +1,5 @@
+.env
+jobs.db
+autoapplyer/scraper/yc_state.json
+__pycache__/
+*.pyc

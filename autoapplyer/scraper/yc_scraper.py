@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 from dotenv import load_dotenv
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright, Page
 
 
 
@@ -13,13 +13,20 @@ STATE_FILE = Path(__file__).with_name("yc_state.json")
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
 
+
 load_dotenv(dotenv_path=ENV_FILE)
 
 
 BOT_EMAIL = os.getenv("YC_BOT_EMAIL")
 BOT_PASSWORD = os.getenv("YC_BOT_PASSWORD")
 
+async def _session_is_valid(page: Page) -> bool:
+    current_url = page.url.lower()
+    login_button = page.locator("a.inline-flex:text('Log In')")
 
+    if ("account.ycombinator.com" in current_url or "login" in current_url or await login_button.is_visible()):
+        return False
+    return True
 
 async def login_and_save_state() -> None:
     async with async_playwright() as p:
@@ -54,22 +61,24 @@ async def open_with_saved_session() -> None:
         raise FileNotFoundError(
             f"No saved session found at {STATE_FILE}. Run the login flow first."
         )
-
-
+    
     async with async_playwright() as p:
         browser = await p.firefox.launch(headless=False)
-        context = await browser.new_context(storage_state=str(STATE_FILE))
+        try:
+            context = await browser.new_context(storage_state=str(STATE_FILE))
+        except:
+            print("Failed to load saved state. Make sure the file exists and is valid.")
+            await browser.close()
+            return
         page = await context.new_page()
-
 
         print("Opening YC jobs page with saved session...")
         await page.goto(JOBS_URL)
         await page.wait_for_timeout(3000)
-
-
+        session_ok = await _session_is_valid(page)
+        print(f"Session valid: {session_ok}")
         print(f"Page title: {await page.title()}")
         print("Browser is open. Use this to confirm the saved session still works.")
-
 
         try:
             await asyncio.sleep(float("inf"))

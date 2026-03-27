@@ -12,4 +12,6 @@ dependencies = [
     "psycopg2-binary>=2.9.11",
     "sqlalchemy>=2.0.48",
     "sqlmodel>=0.0.37",
+    "linkedin-scraper>=3.1.1",
+    "openai>=2.29.0",
 ]

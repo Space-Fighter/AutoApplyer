@@ -5,13 +5,13 @@ from dotenv import load_dotenv
 from playwright.async_api import async_playwright, Page, Error as PlaywrightError
 
 
-JOBS_URL = "https://www.workatastartup.com/jobs"
+JOBS_URL = "https://www.ycombinator.com/jobs"
 STATE_FILE = Path(__file__).with_name("yc_state.json")
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
 load_dotenv(dotenv_path=ENV_FILE)
 
-BOT_EMAIL = os.getenv("YC_BOT_EMAIL")
+BOT_EMAIL = os.getenv("BOT_EMAIL")
 BOT_PASSWORD = os.getenv("YC_BOT_PASSWORD")
 
 

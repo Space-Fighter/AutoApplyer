@@ -12,17 +12,7 @@ Instead of manually applying multiple filters across job portals, this tool conv
 
 Users can describe their job preferences in natural language, and the system generates relevant **LinkedIn job search URLs**.
 
-### Example Input
-
-"Python developer jobs in India, remote or Bangalore, backend or machine learning roles"
-
-### Example Output
-
-A list of LinkedIn job search URLs such as:
-
-- Python Backend Developer — Bangalore  
-- Machine Learning Engineer — Remote  
-- Backend Engineer — India  
+<img width="1599" height="899" alt="image" src="https://github.com/user-attachments/assets/3754ee36-df2a-485f-b6a5-b07a61133306" />
 
 This solves a major limitation:
 
@@ -113,4 +103,8 @@ Users will be able to:
 
 ---
 
-# Architecture Overview 🧠
+# Tech Stack 🧠
+
+- Playwright for scraping
+- Pydandtic for data ingestion
+- SQLModel for database management
